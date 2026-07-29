@@ -1,0 +1,139 @@
+Healthcare AI Chatbot Documentation
+====================================
+
+Overview
+--------
+This repository is a Streamlit-based healthcare chatbot that uses Groq through LangChain and LangGraph to build a tool-enabled assistant. The chatbot can answer general health questions, perform web research, consult Google Scholar, and fetch weather/location-aware health information.
+
+Files and Responsibilities
+--------------------------
+
+app.py
+------
+- Defines the Streamlit UI for the chat bot.
+- Manages chat session history using `st.session_state.messages`.
+- Accepts user input via `st.chat_input`.
+- Calls `chat_workflow.invoke(...)` from `main.py` to get a response.
+- Displays both user and assistant messages in the Streamlit chat interface.
+
+main.py
+-------
+- Builds the core agent graph and workflow.
+- Creates a Groq LLM instance with `ChatGroq`.
+- Binds available tools from `tools.py` to the LLM.
+- Defines three main graph nodes:
+  - `agent`: decides whether to call tools or return a direct answer.
+  - `tools`: executes tool calls when the agent asks for them.
+  - `summarizer`: produces the final answer using a plain LLM pass without tools.
+- Uses `langgraph` to route the conversation:
+  - If the last AI message contains tool calls, route to the `tools` node.
+  - Otherwise route to `summarizer`.
+- Saves conversation checkpoints to SQLite via `SqliteSaver`.
+- Exposes `chat_workflow` for `app.py` and supports a local console mode when run as `__main__`.
+
+config.py
+---------
+- Loads environment variables from `.env` using `dotenv`.
+- Exposes configuration values as static attributes on the `Config` class.
+- Requires `Groq_api_key` and raises an error if it is missing.
+- Also loads optional or additional keys such as `TAVILY_API_KEY`, `OPENWEATHER_API_KEY`, and Redis credentials.
+
+prompt.py
+---------
+- Contains two prompt templates:
+  - `prompt1`: the main HealthBot instruction set, tool usage rules, safety rules, and response style.
+  - `prompt2`: a final summarization prompt for the assistant’s output.
+- Enforces safety rules, scope limits, and the response format.
+- Guides the model to behave as a healthcare assistant and not as a doctor or other role.
+
+tools.py
+--------
+- Defines reusable tool functions wrapped with `@tool` so LangChain can call them.
+- Available tools:
+  - `web_search`: DuckDuckGo web search for general health information.
+  - `web_search_tavily`: Tavily search for health news and official guideline results.
+  - `google_scholar_search`: Google Scholar lookup for research papers and evidence.
+  - `get_datetime`: returns the current date and time.
+  - `get_user_location`: uses `geocoder.ip('me')` to determine the user city, state, and country.
+  - `get_weather`: fetches weather and air quality data from OpenWeather.
+- Combines these tools into `tools_list` used by `main.py`.
+
+Runtime Flow
+------------
+1. User opens the app with `streamlit run app.py`.
+2. `app.py` loads and renders the chat UI.
+3. When the user sends a message, `app.py` appends it to `st.session_state.messages`.
+4. `app.py` calls `chat_workflow.invoke(...)` with the user message wrapped as `HumanMessage`.
+5. `main.py`’s graph begins at the `agent` node:
+   - The agent passes the message plus the HealthBot system prompt to the LLM.
+   - If the LLM decides tools are useful, it emits tool calls.
+6. If tool calls exist, the workflow routes to the `tools` node:
+   - Each requested tool runs and returns structured data.
+   - The graph loops back to `agent` for another reasoning step.
+7. If no tool calls remain, the workflow routes to `summarizer`:
+   - The assistant produces a final health answer.
+8. `app.py` extracts the assistant response and displays it to the user.
+
+ASCII Flowchart
+---------------
+
+ User Input
+     |
+     v
+   app.py
+     |
+     v
+ chat_workflow
+     |
+     v
+   agent node
+    /   \
+   /     \
+ tools?    no tools
+  /           \
+ v             v
+tools node   summarizer
+  |             |
+  v             v
+ agent loop   final answer
+     \         /
+      \       /
+       v     v
+      app.py displays reply
+
+Environment Variables
+---------------------
+- `Groq_api_key` — required for the Groq LLM.
+- `OPENWEATHER_API_KEY` — required for weather data.
+- `TAVILY_API_KEY` — required for Tavily search.
+- `.env` file should be stored locally and not committed to version control.
+
+Dependencies
+------------
+The project depends on packages listed in `requriments.txt`, including:
+- `streamlit`
+- `langchain-core`
+- `langchain-community`
+- `langchain-groq`
+- `langgraph`
+- `langgraph-checkpoint-sqlite`
+- `python-dotenv`
+- `tavily`
+- `scholarly`
+- `requests`
+- `pydantic`
+- `geocoder`
+
+How to Run
+----------
+1. Install dependencies:
+   `python -m pip install -r requriments.txt`
+2. Create `.env` with required keys.
+3. Start the app:
+   `streamlit run app.py`
+
+Notes
+-----
+- The app is designed for general health guidance only.
+- It should not be used as medical diagnosis or treatment advice.
+- `chatbot.db` is created automatically by `main.py` for checkpoint persistence.
