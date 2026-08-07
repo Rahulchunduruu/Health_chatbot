@@ -5,11 +5,10 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph import StateGraph, MessagesState, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from config import Config
 from tools import tools_list
 from prompt import prompt1, prompt2
-import sqlite3
 
 # ── LLM ──────────────────────────────────────────────
 llm = ChatGroq(
@@ -47,8 +46,7 @@ def route_agent(state: MessagesState):
 
 
 # ── Graph ─────────────────────────────────────────────
-conn = sqlite3.connect("chatbot.db", check_same_thread=False)
-checkpointer = SqliteSaver(conn=conn)
+checkpointer = MemorySaver()
 
 graph = StateGraph(MessagesState)
 
@@ -74,7 +72,7 @@ graph.add_edge("tools", "agent")
 # summarizer → END
 graph.add_edge("summarizer", END)
 
-chat_workflow = graph.compile()
+chat_workflow = graph.compile(checkpointer=checkpointer)
 
 
 # ── Main Loop ─────────────────────────────────────────
