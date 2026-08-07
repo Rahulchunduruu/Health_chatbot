@@ -21,7 +21,7 @@ A Streamlit-based healthcare assistant that uses Groq, LangChain tools, and exte
 - `config.py` — environment variable loading and validation
 - `prompt.py` — HealthBot rules, scope, and response prompts
 - `tools.py` — tool wrappers for search, weather, and location
-- `requriments.txt` — dependency list
+- `requirements.txt` — dependency list
 - `.env` — local API keys and config
 - `chatbot.db` — SQLite checkpoint store created at runtime
 
@@ -31,7 +31,7 @@ A Streamlit-based healthcare assistant that uses Groq, LangChain tools, and exte
 2. Install dependencies:
 
 ```bash
-python -m pip install -r requriments.txt
+python -m pip install -r requirements.txt
 ```
 
 3. Create a `.env` file in the repository root with the required keys:
@@ -73,7 +73,7 @@ Then open the local URL shown in the terminal.
 ## Notes
 
 - The repository does not include a FastAPI backend.
-- The dependency file is intentionally named `requriments.txt`.
+- The dependency file is named `requirements.txt`.
 - Keep `.env` private to avoid exposing API keys.
 
 ## Troubleshooting
